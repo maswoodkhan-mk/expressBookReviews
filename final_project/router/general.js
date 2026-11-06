@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const books = require('./booksdb.js');
 const { users } = require('./auth_users.js');
 
@@ -90,6 +91,49 @@ public_users.get('/review/:isbn', (req, res) => {
     }
 
     return res.status(200).json(book.reviews);
+});
+
+
+// Retrieve books from Open Library using Axios and async/await
+const OPEN_LIBRARY = 'https://openlibrary.org';
+
+public_users.get('/axios/author/:author', async (req, res) => {
+    try {
+        const response = await axios.get(`${OPEN_LIBRARY}/search.json`, {
+            params: { author: req.params.author, limit: 10 },
+            timeout: 10000
+        });
+        return res.status(200).json(response.data.docs);
+    } catch (error) {
+        return res.status(502).json({ message: 'Unable to retrieve books by author' });
+    }
+});
+
+public_users.get('/axios/title/:title', async (req, res) => {
+    try {
+        const response = await axios.get(`${OPEN_LIBRARY}/search.json`, {
+            params: { title: req.params.title, limit: 10 },
+            timeout: 10000
+        });
+        return res.status(200).json(response.data.docs);
+    } catch (error) {
+        return res.status(502).json({ message: 'Unable to retrieve books by title' });
+    }
+});
+
+public_users.get('/axios/isbn/:isbn', async (req, res) => {
+    try {
+        const response = await axios.get(
+            `${OPEN_LIBRARY}/isbn/${encodeURIComponent(req.params.isbn)}.json`,
+            { timeout: 10000 }
+        );
+        return res.status(200).json(response.data);
+    } catch (error) {
+        const status = error.response && error.response.status === 404 ? 404 : 502;
+        return res.status(status).json({
+            message: status === 404 ? 'ISBN not found' : 'Unable to retrieve book by ISBN'
+        });
+    }
 });
 
 module.exports.general = public_users;
